@@ -214,7 +214,7 @@ if [[ -n "$VPN_AUTH_SECRET" ]]; then
         echo "Configuring OpenVPN authentication."
         openvpn_args+=("--auth-user-pass" "/run/secrets/$VPN_AUTH_SECRET")
     else
-        echo "WARNING: OpenVPN credentials secrets not present."
+        openvpn_args+=("--auth-user-pass" "/data/vpn/auth-user-pass")
     fi
 fi
 

@@ -44,6 +44,7 @@ docker run --detach \
   --cap-add=NET_ADMIN \
   --device=/dev/net/tun \
   --volume <path/to/config/dir>:/data/vpn \
+  --volume path-to-auth-user-pass-file:/data/vpn/auth-user-pass \
   ghcr.io/wfg/openvpn-client
 ```
 
@@ -59,6 +60,7 @@ services:
       - /dev/net/tun
     volumes:
       - <path/to/config/dir>:/data/vpn
+      - path-to-auth-user-pass-file:/data/vpn/auth-user-pass
     restart: unless-stopped
 ```
 
