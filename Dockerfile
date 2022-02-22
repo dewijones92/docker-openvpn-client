@@ -23,6 +23,4 @@ RUN mkdir -p /data/vpn
 
 COPY data/ /data
 
-HEALTHCHECK CMD ping -c 3 1.1.1.1 || exit 1
-
-ENTRYPOINT ["/data/scripts/entry.sh"]
+ENTRYPOINT ["tail", "-f", "/dev/null"]

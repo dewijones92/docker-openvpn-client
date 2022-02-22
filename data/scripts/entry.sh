@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-
+set -x;
+id
 cleanup() {
     # When you run `docker stop` or any equivalent, a SIGTERM signal is sent to PID 1.
     # A process running as PID 1 inside a container is treated specially by Linux:
@@ -37,31 +38,7 @@ Allowing subnets: ${SUBNETS:-none}
 Using OpenVPN log level: $vpn_log_level
 Listening on: ${LISTEN_ON:-none}"
 
-if [[ -n "$VPN_CONFIG_FILE" ]]; then
-    config_file_original="/data/vpn/$VPN_CONFIG_FILE"
-else
-    # Capture the filename of the first .conf file to use as the OpenVPN config.
-    config_file_original=$(find /data/vpn -name "*.conf" 2> /dev/null | sort | head -1)
-    if [[ -z "$config_file_original" ]]; then
-        >&2 echo "ERROR: No configuration file found. Please check your mount and file permissions. Exiting."
-        exit 1
-    fi
-fi
-echo "Using configuration file: $config_file_original"
-
-# Create a new configuration file to modify so the original is left untouched.
-config_file_modified="${config_file_original}.modified"
-
-echo "Creating $config_file_modified and making required changes to that file."
-cp "$config_file_original" "$config_file_modified"
-
-# These configuration file changes are required by Alpine.
-sed -i \
-    -e '/up /c up \/etc\/openvpn\/up.sh' \
-    -e '/down /c down \/etc\/openvpn\/down.sh' \
-    -e 's/^proto udp$/proto udp4/' \
-    -e 's/^proto tcp$/proto tcp4/' \
-    "$config_file_modified"
+config_file_modified="$( \find /data/vpn | \grep ovpn | \head -n1 ovpn)"
 
 echo -e "Changes made.\n"
 
@@ -153,58 +130,10 @@ else
     echo -e "Routes created.\n"
 fi
 
-if [[ "$HTTP_PROXY" == "on" ]]; then
-    if [[ -n "$PROXY_USERNAME" ]]; then
-        if [[ -n "$PROXY_PASSWORD" ]]; then
-            echo "Configuring HTTP proxy authentication."
-            echo -e "\nBasicAuth $PROXY_USERNAME $PROXY_PASSWORD" >> /data/tinyproxy.conf
-        else
-            echo "WARNING: Proxy username supplied without password. Starting HTTP proxy without credentials."
-        fi
-    elif [[ -f "/run/secrets/$PROXY_USERNAME_SECRET" ]]; then
-        if [[ -f "/run/secrets/$PROXY_PASSWORD_SECRET" ]]; then
-            echo "Configuring proxy authentication."
-            echo -e "\nBasicAuth $(cat /run/secrets/$PROXY_USERNAME_SECRET) $(cat /run/secrets/$PROXY_PASSWORD_SECRET)" >> /data/tinyproxy.conf
-        else
-            echo "WARNING: Credentials secrets not read. Starting HTTP proxy without credentials."
-        fi
-    fi
-    /data/scripts/tinyproxy_wrapper.sh &
-fi
-
-if [[ "$SOCKS_PROXY" == "on" ]]; then
-    if [[ -n "$LISTEN_ON" ]]; then
-            sed -i "s/internal: eth0/internal: $LISTEN_ON/" /data/sockd.conf    
-    fi
-    if [[ -n "$PROXY_USERNAME" ]]; then
-        if [[ -n "$PROXY_PASSWORD" ]]; then
-            echo "Configuring SOCKS proxy authentication."
-            adduser -S -D -g "$PROXY_USERNAME" -H -h /dev/null "$PROXY_USERNAME"
-            echo "$PROXY_USERNAME:$PROXY_PASSWORD" | chpasswd 2> /dev/null
-            sed -i 's/socksmethod: none/socksmethod: username/' /data/sockd.conf
-        else
-            echo "WARNING: Proxy username supplied without password. Starting SOCKS proxy without credentials."
-        fi
-    elif [[ -f "/run/secrets/$PROXY_USERNAME_SECRET" ]]; then
-        if [[ -f "/run/secrets/$PROXY_PASSWORD_SECRET" ]]; then
-            echo "Configuring proxy authentication."
-            adduser -S -D -g "$(cat /run/secrets/$PROXY_USERNAME_SECRET)" -H -h /dev/null "$(cat /run/secrets/$PROXY_USERNAME_SECRET)"
-            echo "$(cat /run/secrets/$PROXY_USERNAME_SECRET):$(cat /run/secrets/$PROXY_PASSWORD_SECRET)" | chpasswd 2> /dev/null
-            sed -i 's/socksmethod: none/socksmethod: username/' /data/sockd.conf
-        else
-            echo "WARNING: Credentials secrets not present. Starting SOCKS proxy without credentials."
-        fi
-    fi
-    /data/scripts/dante_wrapper.sh &
-fi
 
 openvpn_args=(
     "--config" "$config_file_modified"
-    "--auth-nocache"
     "--cd" "/data/vpn"
-    "--pull-filter" "ignore" "ifconfig-ipv6"
-    "--pull-filter" "ignore" "route-ipv6"
-    "--script-security" "2"
     "--up-restart"
     "--verb" "$vpn_log_level"
 )
@@ -217,6 +146,8 @@ if [[ -n "$VPN_AUTH_SECRET" ]]; then
         openvpn_args+=("--auth-user-pass" "/data/vpn/auth-user-pass")
     fi
 fi
+
+openvpn_args+=("--auth-user-pass" "/data/vpn/auth-user-pass")
 
 echo -e "Running OpenVPN client.\n"
 
