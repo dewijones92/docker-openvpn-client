@@ -38,7 +38,7 @@ Allowing subnets: ${SUBNETS:-none}
 Using OpenVPN log level: $vpn_log_level
 Listening on: ${LISTEN_ON:-none}"
 
-config_file_modified="$( \find /data/vpn | \grep ovpn | \head -n1 ovpn)"
+config_file_modified="$( \find /data/vpn | \grep ovpn | \head -n1 )"
 
 echo -e "Changes made.\n"
 
@@ -98,6 +98,10 @@ if [[ "$KILL_SWITCH" == "on" ]]; then
             protocol=${remote[2]:-${global_protocol:-udp}}
 
             ip_regex='^(([1-9]?[0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.){3}([1-9]?[0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))$'
+	    echo "dewi"
+	    set -x;
+	    port="53"
+	    echo $port
             if [[ "$address" =~ $ip_regex ]]; then
                 echo "    IP: $address PORT: $port PROTOCOL: $protocol"
                 iptables -A OUTPUT -o eth0 -d "$address" -p "$protocol" --dport "$port" -j ACCEPT
