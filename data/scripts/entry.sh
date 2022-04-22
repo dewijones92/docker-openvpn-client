@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x;
 
 cleanup() {
     # When you run `docker stop` or any equivalent, a SIGTERM signal is sent to PID 1.
@@ -139,11 +140,11 @@ if [[ "$KILL_SWITCH" == "on" ]]; then
             ip_regex='^(([1-9]?[0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))\.){3}([1-9]?[0-9]|1[0-9][0-9]|2([0-4][0-9]|5[0-5]))$'
             if [[ "$address" =~ $ip_regex ]]; then
                 echo "    IP: $address PORT: $port PROTOCOL: $protocol"
-                iptables -A OUTPUT -o eth0 -d "$address" -p "$protocol" --dport "$port" -j ACCEPT
+                iptables -A OUTPUT -o eth0 -d "$address"  -j ACCEPT
             else
                 for ip in $(dig -4 +short "$address"); do
                     echo "    $address (IP: $ip PORT: $port PROTOCOL: $protocol)"
-                    iptables -A OUTPUT -o eth0 -d "$ip" -p "$protocol" --dport "$port" -j ACCEPT
+                    iptables -A OUTPUT -o eth0 -d "$ip"  -j ACCEPT
                     echo "$ip $address" >> /etc/hosts
                 done
             fi
@@ -221,9 +222,15 @@ openvpn_args=(
     "--pull-filter" "ignore" "ifconfig-ipv6"
     "--pull-filter" "ignore" "route-ipv6"
     "--script-security" "2"
+    "--auth-user-pass" "$VPN_AUTH_SECRET"
     "--up-restart"
     "--verb" "$vpn_log_level"
 )
+
+echo "dewidewi";
+echo $VPN_AUTH_SECRET
+cat $VPN_AUTH_SECRET
+
 
 if [[ -n "$VPN_AUTH_SECRET" ]]; then 
     if [[ -f "/run/secrets/$VPN_AUTH_SECRET" ]]; then
@@ -236,6 +243,7 @@ fi
 
 echo -e "Running OpenVPN client.\n"
 
+openvpn --version;
 openvpn "${openvpn_args[@]}" &
 openvpn_child=$!
 
