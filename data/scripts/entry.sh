@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x
 
 cleanup() {
     # When you run `docker stop` or any equivalent, a SIGTERM signal is sent to PID 1.
@@ -198,9 +199,15 @@ if [[ "$SOCKS_PROXY" == "on" ]]; then
     /data/scripts/dante_wrapper.sh &
 fi
 
+
+echo "dewi files are:" 
+ls -al "/data/vpn"
+authFile="/data/vpn/passfile"
+chmod 600 $authFile
 openvpn_args=(
     "--config" "$config_file_modified"
     "--auth-nocache"
+    "--auth-user-pass" "$authFile"
     "--cd" "/data/vpn"
     "--pull-filter" "ignore" "ifconfig-ipv6"
     "--pull-filter" "ignore" "route-ipv6"
@@ -208,15 +215,6 @@ openvpn_args=(
     "--up-restart"
     "--verb" "$vpn_log_level"
 )
-
-if [[ -n "$VPN_AUTH_SECRET" ]]; then 
-    if [[ -f "/run/secrets/$VPN_AUTH_SECRET" ]]; then
-        echo "Configuring OpenVPN authentication."
-        openvpn_args+=("--auth-user-pass" "/run/secrets/$VPN_AUTH_SECRET")
-    else
-        echo "WARNING: OpenVPN credentials secrets not present."
-    fi
-fi
 
 echo -e "Running OpenVPN client.\n"
 
