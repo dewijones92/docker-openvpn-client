@@ -12,12 +12,14 @@ ENV KILL_SWITCH=on \
     HTTP_PROXY=off \
     SOCKS_PROXY=off
 
-RUN apk add --no-cache \
+RUN apk add -vvvv --no-cache \
         bash \
         bind-tools \
         dante-server \
         openvpn \
         tinyproxy
+
+RUN openvpn --version
 
 RUN mkdir -p /data/vpn
 
